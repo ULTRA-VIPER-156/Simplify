@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Explore your Spotify listening history, favorite tracks, artists, and listening stats.">
+<meta name="theme-color" content="#f5f5f7">
+<title>Stats for Spotify</title>
+<link rel="stylesheet" href="Style.css">
+</head>
+<body>
+<section id="login" class="login">
+  <div class="login-card">
+    <div class="bars big"><i></i><i></i><i></i><i></i></div>
+    <h1>Stats for Spotify</h1>
+    <p>Your listening history, top tracks and artists, merged with your extended streaming history.</p>
+    <button id="loginBtn" class="btn primary">Connect Spotify</button>
+    <p id="loginMsg" class="muted small"></p>
+  </div>
+</section>
+
+<div id="app" hidden>
+  <header class="nav">
+    <div class="nav-inner">
+      <span class="brand">Stats</span>
+      <nav class="seg" id="tabs"></nav>
+      <button id="logoutBtn" class="link">Sign out</button>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
