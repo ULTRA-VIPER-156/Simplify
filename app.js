@@ -86,9 +86,7 @@
 
 /* ---------- 2. Constants & utils ---------- */
 const CLIENT_ID = "f4f91d34cbbd45408da8232678865b15";
-const REDIRECT = location.protocol === "file:"
-  ? "http://127.0.0.1:5173/"
-  : new URL(".", location.href).href;
+const REDIRECT = "http://127.0.0.1:5173/";
 const SCOPES = "user-read-currently-playing user-read-playback-state user-read-recently-played user-top-read user-modify-playback-state user-library-read user-library-modify playlist-read-private playlist-read-collaborative playlist-modify-private user-follow-read";
 const DAY = 864e5;
 const RANGES = { "4w": ["4 weeks", 28 * DAY, "short_term"], "6m": ["6 months", 182 * DAY, "medium_term"], "1y": ["1 year", 365 * DAY, "long_term"], all: ["Lifetime", Infinity, "long_term"] };
@@ -169,23 +167,14 @@ let wp = { p: "month", off: 0 };
 let libTab = "playlists";
 
 let cfg = Object.assign({ mode: "auto", accent: "#ff8800", anim: true, goal: 90 }, JSON.parse(localStorage.getItem("cfg") || "{}"));
-function motionAllowed() {
-  return cfg.anim && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-}
-function animationsEnabled() {
-  return motionAllowed() && typeof anime !== "undefined";
-}
 function applyCfg() {
   const r = document.documentElement;
   if (cfg.mode === "auto") r.removeAttribute("data-theme"); else r.dataset.theme = cfg.mode;
   r.style.setProperty("--accent", cfg.accent);
-  r.classList.toggle("noanim", !motionAllowed());
+  r.classList.toggle("noanim", !cfg.anim);
   localStorage.setItem("cfg", JSON.stringify(cfg));
 }
 applyCfg();
-if (animationsEnabled()) {
-  anime({ targets: ".login-card", translateY: [24, 0], opacity: [0, 1], duration: 760, easing: "easeOutExpo" });
-}
 
 /* ---------- 5. Auth + API ---------- */
 async function login() {
@@ -400,25 +389,16 @@ async function fillImages(rows, kind) {
 }
 
 function countUp(el, to, dec = 0) {
-  if (!motionAllowed()) { el.textContent = to.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }); return; }
+  if (!cfg.anim) { el.textContent = to.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }); return; }
   const t0 = performance.now();
   const f = (t) => { const q = Math.min(1, (t - t0) / 1100); el.textContent = (to * (1 - Math.pow(1 - q, 3))).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }); if (q < 1) requestAnimationFrame(f); };
   requestAnimationFrame(f);
 }
 function reveal() {
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const widths = [...document.querySelectorAll("[data-w]")];
-    const heights = [...document.querySelectorAll("[data-h]")];
-    const rings = [...document.querySelectorAll("[data-off]")];
-    if (animationsEnabled()) {
-      anime({ targets: widths, width: (el) => `${el.dataset.w}%`, delay: anime.stagger(24), duration: 850, easing: "easeOutExpo" });
-      anime({ targets: heights, height: (el) => `${el.dataset.h}%`, delay: anime.stagger(16), duration: 900, easing: "easeOutExpo" });
-      anime({ targets: rings, strokeDashoffset: (el) => +el.dataset.off, duration: 1100, easing: "easeOutExpo" });
-    } else {
-      widths.forEach((e) => e.style.width = `${e.dataset.w}%`);
-      heights.forEach((e) => e.style.height = `${e.dataset.h}%`);
-      rings.forEach((e) => e.style.strokeDashoffset = e.dataset.off);
-    }
+    document.querySelectorAll("[data-w]").forEach((e) => e.style.width = `${e.dataset.w}%`);
+    document.querySelectorAll("[data-h]").forEach((e) => e.style.height = `${e.dataset.h}%`);
+    document.querySelectorAll("[data-off]").forEach((e) => e.style.strokeDashoffset = e.dataset.off);
     document.querySelectorAll("[data-n]").forEach((el) => countUp(el, +el.dataset.n, +(el.dataset.d || 0)));
   }));
 }
@@ -612,7 +592,7 @@ function renderWrapped() {
 function animateCardsIn() {
   const cards = document.querySelectorAll(".wrapped-card");
   if (!cards.length) return;
-  if (!animationsEnabled()) { cards.forEach(c => { c.style.opacity = 1; c.style.transform = "none"; }); return; }
+  if (typeof anime === "undefined" || !cfg.anim) { cards.forEach(c => { c.style.opacity = 1; c.style.transform = "none"; }); return; }
   cards.forEach(c => { c.style.opacity = 0; });
   anime({
     targets: cards,
@@ -966,7 +946,7 @@ function openArtistHero(startIdx = 0) {
     } else {
       bgLayers.forEach(layer => layer.classList.remove("on"));
     }
-    if (animationsEnabled()) {
+    if (cfg.anim && typeof anime !== "undefined") {
       anime({ targets: bg, backgroundColor: bgSolid(k), duration: 700, easing: "easeInOutQuad" });
     } else {
       bg.style.backgroundColor = bgSolid(k);
@@ -976,7 +956,7 @@ function openArtistHero(startIdx = 0) {
   };
 
   const animatePanelIn = (slide) => {
-    if (animationsEnabled()) {
+    if (cfg.anim && typeof anime !== "undefined") {
       anime.remove(slide.querySelectorAll(".ahp *"));
       anime({ targets: slide.querySelector(".ahp"), translateY: [40, 0], opacity: [0, 1], duration: 600, easing: "easeOutExpo" });
       anime({ targets: slide.querySelectorAll(".ahp-chip"), scale: [0.7, 1], opacity: [0, 1], delay: anime.stagger(55, { start: 120 }), duration: 600, easing: "easeOutBack" });
@@ -991,7 +971,7 @@ function openArtistHero(startIdx = 0) {
     }
     // card entrance
     const card = slide.querySelector(".ahc");
-    if (card && animationsEnabled()) {
+    if (card && cfg.anim && typeof anime !== "undefined") {
       anime.remove(card);
       anime({ targets: card, scale: [0.9, 1], opacity: [0, 1], rotate: [-3, 0], duration: 700, easing: "easeOutExpo" });
     }
@@ -1008,7 +988,7 @@ function openArtistHero(startIdx = 0) {
   const close = () => {
     document.body.style.overflow = "";
     document.removeEventListener("keydown", onKey);
-    if (animationsEnabled()) {
+    if (cfg.anim && typeof anime !== "undefined") {
       anime({ targets: overlay, opacity: [1, 0], duration: 350, easing: "easeInQuad", complete: () => overlay.remove() });
     } else {
       overlay.remove();
@@ -1026,7 +1006,7 @@ function openArtistHero(startIdx = 0) {
   requestAnimationFrame(() => {
     deck.style.visibility = "visible";
     setActive(startIdx);
-    if (animationsEnabled()) {
+    if (cfg.anim && typeof anime !== "undefined") {
       anime({ targets: overlay, opacity: [0, 1], duration: 350, easing: "easeOutQuad" });
       anime({ targets: dots, translateX: [20, 0], opacity: [0, 0.4], delay: anime.stagger(40), duration: 500 });
       anime({ targets: hint, translateY: [0, 8], loop: true, direction: "alternate", duration: 700, easing: "easeInOutSine" });
@@ -1075,7 +1055,7 @@ document.body.insertAdjacentHTML("beforeend", `<div id="pbar" hidden>
       <button data-a="next" aria-label="Next">${icon("next")}</button>
       <button id="prp" data-a="repeat" aria-label="Repeat">${icon("repeat")}</button>
     </div>
-    <div class="sk"><span id="pel">0:00</span><input type="range" id="psk" min="0" max="1" step="1000" value="0"><span id="pdu">0:00</span></div>
+    <div class="sk"><span id="pel">0:00</span><input type="range" id="psk" min="0" max="1" step="1000" value="0" aria-label="Seek through track"><span id="pdu">0:00</span></div>
   </div>
   <div class="r">
     <button data-a="queue" aria-label="Queue">${icon("queue")}</button>
@@ -1122,12 +1102,14 @@ function paint() {
   if (ps.device && ps.device.volume_percent != null && !volDrag) $("#pvo").value = ps.device.volume_percent;
   document.title = `${ps.is_playing ? "▶ " : ""}${t.name} · ${$("#pa").textContent}`;
   if (t.id !== likeId) { likeId = t.id; checkLike(t.id); }
+  updateMediaSession(t);
   tickBar();
 }
 function tickBar() {
   if (!ps || !ps.item || seeking) return;
   const p = Math.min(ps.item.duration_ms, ps.progress_ms + (ps.is_playing ? Date.now() - at : 0));
   $("#psk").value = p;
+  $("#psk").style.setProperty("--progress", `${Math.min(100, (p / ps.item.duration_ms) * 100)}%`);
   $("#pel").textContent = fmtClock(p);
 }
 async function checkLike(id) {
@@ -1140,6 +1122,42 @@ async function act(method, path) {
   if (r.status === 403) toast("Playback control needs Spotify Premium");
   if (r.status === 404) toast("No active device. Open Spotify somewhere first");
   setTimeout(poll, 350);
+}
+let mediaTrackId = null;
+function updateMediaSession(track) {
+  const session = navigator.mediaSession;
+  if (!session) return;
+  if (mediaTrackId !== track.id && "MediaMetadata" in window) {
+    mediaTrackId = track.id;
+    session.metadata = new MediaMetadata({
+      title: track.name,
+      artist: track.artists?.map((artist) => artist.name).join(", ") || "",
+      album: track.album?.name || "",
+      artwork: (track.album?.images || []).map((image) => ({ src: image.url })),
+    });
+  }
+  session.playbackState = ps.is_playing ? "playing" : "paused";
+  if (typeof session.setPositionState === "function" && track.duration_ms > 0) {
+    session.setPositionState({
+      duration: track.duration_ms / 1000,
+      playbackRate: 1,
+      position: Math.min(track.duration_ms, ps.progress_ms || 0) / 1000,
+    });
+  }
+}
+if (navigator.mediaSession && typeof navigator.mediaSession.setActionHandler === "function") {
+  for (const [action, handler] of [
+    ["play", () => act("PUT", "play")],
+    ["pause", () => act("PUT", "pause")],
+    ["previoustrack", () => act("POST", "previous")],
+    ["nexttrack", () => act("POST", "next")],
+  ]) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (error) {
+      if (error.name !== "NotSupportedError") throw error;
+    }
+  }
 }
 async function playBody(body) {
   let r = await call("PUT", "/me/player/play", body);
@@ -1178,10 +1196,23 @@ $("#pbar").addEventListener("click", async (e) => {
   else if (a === "queue") showQueue();
   else if (a === "like" && likeId) { await call(isLiked ? "DELETE" : "PUT", `/me/tracks?ids=${likeId}`); checkLike(likeId); }
 });
-$("#psk").oninput  = (e) => { seeking = true; $("#pel").textContent = fmtClock(+e.target.value); };
+$("#psk").oninput  = (e) => { seeking = true; $("#pel").textContent = fmtClock(+e.target.value); e.target.style.setProperty("--progress", `${(+e.target.value / +e.target.max) * 100}%`); };
 $("#psk").onchange = async (e) => { await call("PUT", `/me/player/seek?position_ms=${Math.round(e.target.value)}`); seeking = false; setTimeout(poll, 300); };
 $("#pvo").oninput  = () => { volDrag = true; };
 $("#pvo").onchange = async (e) => { await call("PUT", `/me/player/volume?volume_percent=${e.target.value}`); volDrag = false; };
+document.addEventListener("keydown", (e) => {
+  if (!ps?.item || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.target.closest("input, textarea, select, [contenteditable=true], button, a, [role=button]")) return;
+  if (e.code === "Space") {
+    e.preventDefault();
+    act("PUT", ps.is_playing ? "pause" : "play");
+  } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    const delta = e.key === "ArrowRight" ? 10000 : -10000;
+    const position = Math.max(0, Math.min(ps.item.duration_ms, (ps.progress_ms || 0) + delta));
+    call("PUT", `/me/player/seek?position_ms=${position}`).then(() => setTimeout(poll, 300));
+  }
+});
 
 /* cover clicks (play / queue) */
 document.addEventListener("click", (e) => {
@@ -1235,35 +1266,6 @@ function render() {
   return renderTop(); // track / artist / album
 }
 
-const animatedViewNodes = new WeakSet();
-function animateViewElementsIn(elements) {
-  if (!animationsEnabled()) return;
-  const targets = elements.filter((el) => !animatedViewNodes.has(el));
-  if (!targets.length) return;
-  targets.forEach((el) => animatedViewNodes.add(el));
-  anime({
-    targets,
-    translateY: [18, 0],
-    opacity: [0, 1],
-    delay: anime.stagger(55),
-    duration: 620,
-    easing: "easeOutExpo",
-  });
-}
-
-const viewMotionObserver = new MutationObserver((records) => {
-  const targets = new Set();
-  for (const record of records) {
-    if (record.target === $("#view") || ["res", "lbox"].includes(record.target.id)) {
-      for (const node of record.addedNodes) {
-        if (node instanceof HTMLElement) targets.add(node);
-      }
-    }
-  }
-  if (targets.size) requestAnimationFrame(() => animateViewElementsIn([...targets]));
-});
-viewMotionObserver.observe($("#view"), { childList: true, subtree: true });
-
 /* Delegated clicks: row / period-wrap hero with [data-k] → small artist modal.
    Wrapped artist cards are excluded because they have their own
    click → openArtistHero() handler bound in bindArtistCards(). */
@@ -1287,11 +1289,7 @@ async function start() {
 
   $("#tabs").onclick = (e) => {
     const t = e.target.dataset.tab;
-    if (t) {
-      tab = t;
-      render();
-      if (animationsEnabled()) anime({ targets: e.target, scale: [0.94, 1], duration: 360, easing: "easeOutBack" });
-    }
+    if (t) { tab = t; render(); }
   };
 
   $("#logoutBtn").onclick = () => {
@@ -1345,7 +1343,7 @@ async function start() {
     .nhx-bg .img{position:absolute;inset:-12%;background-size:cover;background-position:center;filter:blur(60px) saturate(200%) brightness(.66);transform:scale(1.15);transition:transform 10s cubic-bezier(.2,.6,.2,1),opacity .85s ease;opacity:0}
     .nhx-bg .img.on{opacity:1}
     .nhx.open .nhx-bg .img{transform:scale(1.35)}
-    .nhx-bg .tint{position:absolute;inset:0;background:linear-gradient(145deg,#1DB954,#15823b);mix-blend-mode:soft-light;opacity:.85}
+    .nhx-bg .tint{position:absolute;inset:0;background:linear-gradient(145deg,color-mix(in srgb,var(--song) 24%,transparent),transparent 72%);mix-blend-mode:soft-light;opacity:.72}
     .nhx-bg .tint-accent{position:absolute;inset:0;mix-blend-mode:color;opacity:0;transition:opacity .9s ease,background-color .9s ease}
     .nhx-bg .vig{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.2),transparent 20%,transparent 80%,rgba(0,0,0,.3)),radial-gradient(ellipse at 50% 50%,transparent 32%,rgba(0,0,0,.45) 100%)}
 
@@ -1492,19 +1490,11 @@ async function renderNow() {
 
   view.innerHTML = `
     <h2>Now playing</h2>
-    <div class="card np" id="np" role="button" tabindex="0" aria-label="Open now playing details"><div class="empty" style="width:100%">Checking Spotify…</div></div>
+    <div class="card np" id="np"><div class="empty" style="width:100%">Checking Spotify…</div></div>
     <h3 style="margin-top:.5rem">Recently played</h3>
     <div class="card">${list || '<div class="empty">No plays collected yet.</div>'}</div>`;
   const npEl = $("#np");
-  if (npEl) {
-    npEl.addEventListener("click", () => openNowHero());
-    npEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openNowHero();
-      }
-    });
-  }
+  if (npEl) npEl.addEventListener("click", () => openNowHero());
 
   fillImages(recent.map(([, uri]) => ({ uri, img: lib.meta[uri]?.img })), "track");
 
@@ -1570,7 +1560,7 @@ async function openNowHero() {
   document.body.style.overflow = "hidden";
   requestAnimationFrame(() => overlay.classList.add("open"));
 
-  if (animationsEnabled()) {
+  if (cfg.anim && typeof anime !== "undefined") {
     anime({ targets: overlay, opacity: [0, 1], duration: 300, easing: "easeOutQuad" });
   }
 
@@ -1677,13 +1667,13 @@ async function openNowHero() {
     nhExtractColor(img).then(col => {
       if (!col) return;
       const acc = overlay.querySelector(".tint-accent");
-      if (acc) { acc.style.backgroundColor = col; acc.style.opacity = "0.85"; }
+      if (acc) { acc.style.backgroundColor = col; acc.style.opacity = "0.28"; }
     });
   }
 
   /* --- entrance animation for a freshly populated panel --- */
   function animIn() {
-    if (!animationsEnabled()) {
+    if (!cfg.anim || typeof anime === "undefined") {
       overlay.querySelectorAll(".nhx-bars i").forEach(el => el.style.height = `${el.dataset.h}%`);
       overlay.querySelectorAll("[data-n]").forEach(el => countUp(el, +el.dataset.n));
       return;
@@ -1708,7 +1698,7 @@ async function openNowHero() {
       const t = c.item;
 
       /* fade out + fetch queue in parallel */
-      const fading = mode === "swap" && animationsEnabled()
+      const fading = mode === "swap" && cfg.anim && typeof anime !== "undefined"
         ? anime({ targets: [leftEl, rightEl], opacity: [1, 0], duration: 200, easing: "easeInQuad" }).finished
         : Promise.resolve();
       const queueFetch = api("/me/player/queue")
@@ -1733,7 +1723,7 @@ async function openNowHero() {
       animIn();
 
       /* fade the containers back in after swap */
-      if (mode === "swap" && animationsEnabled()) {
+      if (mode === "swap" && cfg.anim && typeof anime !== "undefined") {
         anime({ targets: leftEl, opacity: [0, 1], duration: 400, easing: "easeOutQuad" });
         anime({ targets: rightEl, opacity: [0, 1], duration: 400, easing: "easeOutQuad" });
       }
@@ -1829,7 +1819,7 @@ async function openNowHero() {
     clearInterval(stateInt);
     document.body.style.overflow = "";
     document.removeEventListener("keydown", onKey);
-    if (animationsEnabled()) {
+    if (cfg.anim && typeof anime !== "undefined") {
       anime({ targets: overlay, opacity: [1, 0], duration: 280, easing: "easeInQuad", complete: () => overlay.remove() });
     } else {
       overlay.remove();
